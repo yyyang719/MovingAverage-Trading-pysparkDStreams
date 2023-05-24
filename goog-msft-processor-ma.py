@@ -15,20 +15,20 @@ if __name__ == "__main__":
         print("Usage: goog-msft-processor-ma.py <hostname> <port>", file=sys.stderr)
         sys.exit(-1)
     sc = SparkContext(appName="PythonStreamingGoogMsftprice")
-    ssc = StreamingContext(sc, 1)
+    ssc = StreamingContext(sc, 1) #data are emitted every second
     
     ssc.checkpoint("~/big-data-repo")
 
-    lines = ssc.socketTextStream(sys.argv[1], int(sys.argv[2]))
-
+    lines = ssc.socketTextStream(sys.argv[1], int(sys.argv[2])) # generate data
+    # map data to the form (name, (date, price))
     googPrice = lines.map(lambda line: ('googPrice', (line.split(" ")[0], line.split(" ")[1])))
     msftPrice = lines.map(lambda line: ('msftPrice',(line.split(" ")[0], line.split(" ")[2])))
     
-    
+    # average price with form (name, average price)
     googMA10 = googPrice.map(lambda p: (p[1][1])).reduceByWindow(lambda x, y: float(x) + float(y),lambda x, y: float(x) - float(y), 10, 1).map(lambda x: ('googPrice', float(x)/10))
     msftMA10 = msftPrice.map(lambda p: (p[1][1])).reduceByWindow(lambda x, y: float(x) + float(y),lambda x, y: float(x) - float(y), 10, 1).map(lambda x: ('msftPrice', float(x)/10))
-    
-    goog_date_ma10 = googPrice.join(googMA10).map(lambda x: (x[1][0][0], x[1][1]))
+    # join with name to produce average price with form (date, average price)
+    goog_date_ma10 = googPrice.join(googMA10).map(lambda x: (x[1][0][0], x[1][1])) 
     msft_date_ma10 = msftPrice.join(msftMA10).map(lambda x: (x[1][0][0], x[1][1]))
     
     
