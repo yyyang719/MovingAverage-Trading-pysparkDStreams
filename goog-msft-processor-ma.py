@@ -37,10 +37,24 @@ if __name__ == "__main__":
     
     goog_date_ma40 = googPrice.join(googMA40).map(lambda x: (x[1][0][0], x[1][1]))
     msft_date_ma40 = msftPrice.join(msftMA40).map(lambda x: (x[1][0][0], x[1][1]))
-    
+    # streaming with form (date, True/False), True means 10days ma is greater than 40days ma, otherwise False.
     googjoinedStream = goog_date_ma10.join(goog_date_ma40).map(lambda x : (x[0], x[1][0]>x[1][1]))
     msftjoinedStream = msft_date_ma10.join(msft_date_ma40).map(lambda x : (x[0], x[1][0]>x[1][1]))
 
+    state = True
+    
+    def makedecision(rdd):
+        data = rdd.collect()
+        global state
+        if len(data) !=0:
+            if data[0][1] != state and data[0][1]==False: # 10days ma crosses below 40days ma
+                state = data[0][1]    
+                print (data[0][0], 'sell')
+                
+            elif data[0][1] != state and data[0][1]==True: # 10days ma crosses above 40days ma
+                state = data[0][1]
+                print(data[0][0], 'buy')
+            
     # googPrice.pprint()
     # msftPrice.pprint()
     # goog_date_ma10.pprint()
@@ -48,7 +62,9 @@ if __name__ == "__main__":
     # goog_date_ma40.pprint()
     # msft_date_ma40.pprint()
     googjoinedStream.pprint()
-    msftjoinedStream.pprint()
+    # msftjoinedStream.pprint()
+    googjoinedStream.foreachRDD(makedecision)
+    # msftjoinedStream.foreachRDD(makedecision)
     
     ssc.start()
     ssc.awaitTermination()
